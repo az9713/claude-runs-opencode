@@ -8,7 +8,7 @@ A Claude Code skill that orchestrates [OpenCode CLI](https://opencode.ai) to run
 /llmbench Create a retro arcade space battle with pixel-art spaceships...
 ```
 
-https://github.com/az9713/claude-runs-opencode/releases/download/v1.0/comparison.mp4
+https://github.com/user-attachments/assets/b5e720d7-06a0-4c78-874d-8db4edcfd9a3
 
 *GLM-5 vs MiniMax M2.5 vs Gemini 3 Pro vs Claude Opus 4.6 — same prompt, same time, side by side.*
 
