@@ -76,7 +76,8 @@
 11. [File Inventory](#11-file-inventory)
 12. [How to Reproduce From Scratch](#12-how-to-reproduce-from-scratch)
 13. [Cost Analysis](#13-cost-analysis)
-14. [Future Work](#14-future-work)
+14. [Embedding the Video in the GitHub README](#14-embedding-the-video-in-the-github-readme)
+15. [Future Work](#15-future-work)
 
 ---
 
@@ -871,7 +872,77 @@ Note: These are rough estimates. Actual costs depend on prompt length, output le
 
 ---
 
-## 14. Future Work
+## 14. Embedding the Video in the GitHub README
+
+After the pipeline produces `out/comparison.mp4` (32MB), there's a separate challenge: making the video play inline on the GitHub README so visitors can see the results without downloading anything.
+
+### 14.1 The Problem
+
+GitHub's markdown renderer supports `<video>` tags, but only from specific trusted URL domains. Three approaches were tried:
+
+| Approach | Result |
+|----------|--------|
+| `<video src="assets/comparison.mp4">` (relative path to file in repo) | Did not render — GitHub's sanitizer ignores relative paths in `<video>` src |
+| `<video src="https://github.com/.../raw/main/assets/comparison.mp4">` (absolute raw URL) | Did not render — `raw.githubusercontent.com` is not an allowed video source |
+| Bare `https://github.com/user-attachments/assets/UUID` URL on its own line | Rendered — GitHub auto-converts this into an inline video player |
+
+The only URL domain GitHub renders as inline video is `user-attachments`. These URLs are generated exclusively through the GitHub web UI when you drag-drop a file into an issue, PR, or comment text box.
+
+### 14.2 Compressing the Video
+
+The original Remotion output is 32MB (1920x1080, 30fps, 30s). GitHub's issue upload accepts videos up to 10MB. Compression was done with ffmpeg:
+
+```bash
+ffmpeg -i out/comparison.mp4 \
+  -vcodec libx264 \
+  -crf 28 \
+  -preset slow \
+  -vf scale=1280:720 \
+  -an \
+  assets/comparison.mp4
+```
+
+| Flag | Purpose |
+|------|---------|
+| `-vcodec libx264` | H.264 codec (universally supported) |
+| `-crf 28` | Constant Rate Factor — higher = smaller file, lower quality. 28 is visibly fine for pixel-art games |
+| `-preset slow` | Better compression at the cost of encoding time |
+| `-vf scale=1280:720` | Downscale from 1080p to 720p — halves the pixel count |
+| `-an` | Strip audio (the HTML games have no audio) |
+
+Result: **32MB → 5MB** — well within GitHub's 10MB upload limit with minimal visible quality loss.
+
+### 14.3 Uploading via a GitHub Issue
+
+Since `user-attachments` URLs can only be generated through the GitHub web UI:
+
+1. Open a new issue on the repo (or open an existing issue's comment box)
+2. Drag-drop the compressed `assets/comparison.mp4` into the text area
+3. Wait for the upload to complete — GitHub generates a URL like:
+   ```
+   https://github.com/user-attachments/assets/b5e720d7-06a0-4c78-874d-8db4edcfd9a3
+   ```
+4. Copy that URL
+5. Paste it on its own line in `README.md` (not inside a `<video>` tag — the bare URL is what GitHub auto-converts)
+6. The issue can be closed or discarded — the `user-attachments` URL remains valid permanently
+
+### 14.4 The README Markup
+
+The final markup in `README.md` is simply the bare URL on its own line:
+
+```markdown
+https://github.com/user-attachments/assets/b5e720d7-06a0-4c78-874d-8db4edcfd9a3
+```
+
+GitHub automatically detects this as a video URL and renders an inline player with play/pause controls. No `<video>` tag, no HTML — just the raw URL.
+
+### 14.5 Key Takeaway
+
+Embedding video in a GitHub README requires a specific URL format (`user-attachments`) that can only be obtained through the web UI drag-drop upload. This is not automatable via the `gh` CLI or the GitHub REST API. It's a manual step, but it only takes 30 seconds and the URL is permanent.
+
+---
+
+## 15. Future Work
 
 Based on the original vision and natural extensions:
 
